@@ -3,10 +3,16 @@
 namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
 use App\Repository\CheeseListingRepository;
 use Carbon\Carbon;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\RangeFilter;
+use ApiPlatform\Core\Serializer\Filter\PropertyFilter;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ApiResource(
@@ -17,9 +23,17 @@ use Symfony\Component\Serializer\Annotation\Groups;
  *     },
  *     shortName="cheeses",
  *     normalizationContext={"groups"={"cheese_listing:read"}},
- *     denormalizationContext={"groups"={"cheese_listing:write"}}
+ *     denormalizationContext={"groups"={"cheese_listing:write"}},
+ *     attributes={
+ *          "pagination_items_per_page"=20
+ *     }
  * )
+ * @ApiFilter(BooleanFilter::class, properties={"isPublished"})
+ * @ApiFilter(SearchFilter::class, properties={"title": "partial"})
+ * @ApiFilter(RangeFilter::class, properties={"price"})
  * @ORM\Entity(repositoryClass=CheeseListingRepository::class)
+ * @ApiFilter(PropertyFilter::class)
+ *
  */
 class CheeseListing
 {
@@ -33,18 +47,37 @@ class CheeseListing
     /**
      * @ORM\Column(type="string", length=255)
      * @Groups({"cheese_listing:read","cheese_listing:write"})
+     * @Assert\NotBlank()
+     * @Assert\Length(
+     *     min=2,
+     *     max=50,
+     *     maxMessage="Za dużo znaków, max. 50",
+     *     minMessage="Za mało znaków"
+     * )
      */
     private $title;
     /**
      * @ORM\Column(type="text")
-     * @Groups({"cheese_listing:read"})
+     * @Groups({"cheese_listing:read","cheese_listing:write"})
+     * @Assert\NotBlank()
      */
     private $description;
     /**
      * @ORM\Column(type="integer")
      * @Groups({"cheese_listing:read","cheese_listing:write"})
+     * @Assert\NotBlank()
      */
     private $price;
+
+    /**
+     * @ORM\Column(type="datetime")
+     */
+    private $createdAt;
+
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private $isPublished = false;
 
     public function __construct()
     {
@@ -122,14 +155,7 @@ class CheeseListing
     {
         $this->isPublished = $isPublished;
     }
-    /**
-     * @ORM\Column(type="datetime")
-     */
-    private $createdAt;
-    /**
-     * @ORM\Column(type="boolean")
-     */
-    private $isPublished;
+
 
     public function getId(): ?int
     {
@@ -145,5 +171,16 @@ class CheeseListing
     {
         Carbon::setLocale('pl');
         return Carbon::instance($this->getCreatedAt())->diffForHumans();
+    }
+
+    /**
+     * @Groups("cheese_listing:read")
+     */
+    public function getShortDescription(): string
+    {
+        if (strlen($this->description) < 40) {
+            return $this->description;
+        }
+        return substr($this->description, 0, 40).'...';
     }
 }
