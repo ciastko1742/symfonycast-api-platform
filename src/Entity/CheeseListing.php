@@ -29,7 +29,11 @@ use Symfony\Component\Validator\Constraints as Assert;
  *     }
  * )
  * @ApiFilter(BooleanFilter::class, properties={"isPublished"})
- * @ApiFilter(SearchFilter::class, properties={"title": "partial"})
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "title": "partial",
+ *     "owner": "exact",
+ *     "owner.username": "partial"
+ * })
  * @ApiFilter(RangeFilter::class, properties={"price"})
  * @ORM\Entity(repositoryClass=CheeseListingRepository::class)
  * @ApiFilter(PropertyFilter::class)
@@ -46,7 +50,7 @@ class CheeseListing
 
     /**
      * @ORM\Column(type="string", length=255)
-     * @Groups({"cheese_listing:read","cheese_listing:write"})
+     * @Groups({"cheese_listing:read","cheese_listing:write","user:read"})
      * @Assert\NotBlank()
      * @Assert\Length(
      *     min=2,
@@ -56,12 +60,14 @@ class CheeseListing
      * )
      */
     private $title;
+
     /**
      * @ORM\Column(type="text")
-     * @Groups({"cheese_listing:read","cheese_listing:write"})
+     * @Groups({"cheese_listing:read","cheese_listing:write","user:read"})
      * @Assert\NotBlank()
      */
     private $description;
+
     /**
      * @ORM\Column(type="integer")
      * @Groups({"cheese_listing:read","cheese_listing:write"})
@@ -163,7 +169,9 @@ class CheeseListing
         $this->isPublished = $isPublished;
     }
 
-
+    /**
+     * @return int|null
+     */
     public function getId(): ?int
     {
         return $this->id;
